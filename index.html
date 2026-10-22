@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>保定维多利亚摩友群专用地图</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;font-family:"Microsoft YaHei","PingFang SC",sans-serif;-webkit-tap-highlight-color:transparent;}
+  #app{display:flex;flex-direction:column;height:100%;}
+  header{background:#b91c1c;color:#fff;padding:8px 14px;display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;flex:0 0 auto;z-index:30;}
+  header h1{font-size:16px;margin:0;font-weight:700;}
+  header .stat{background:rgba(255,255,255,.18);border-radius:11px;padding:1px 9px;font-size:11.5px;}
+  header .stat b{font-size:13px;}
+  #map{flex:1 1 auto;position:relative;}
+  #tip{position:absolute;left:12px;top:12px;z-index:15;background:rgba(255,255,255,.96);border:1px solid #e7d8cf;
+       border-left:5px solid #b91c1c;border-radius:8px;padding:8px 11px;font-size:12.5px;color:#333;
+       box-shadow:0 2px 8px rgba(0,0,0,.18);line-height:1.6;max-width:270px;display:none;}
+  #tip b{color:#7f1d1d;}
+  #tip .x{position:absolute;right:6px;top:3px;color:#999;font-size:16px;cursor:pointer;}
+  #openBtn{position:absolute;left:12px;bottom:74px;z-index:20;background:#b91c1c;color:#fff;border:none;border-radius:20px;
+       padding:10px 16px;font-size:13.5px;box-shadow:0 2px 10px rgba(0,0,0,.35);font-family:inherit;}
+  #mask{position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:24;display:none;}
+  #sheet{position:absolute;left:0;right:0;bottom:0;max-height:74%;overflow-y:auto;background:#faf7f5;z-index:25;
+       border-radius:14px 14px 0 0;transform:translateY(103%);transition:transform .25s;padding:10px 14px 24px;box-sizing:border-box;
+       -webkit-overflow-scrolling:touch;}
+  #sheet.open{transform:translateY(0);}
+  #mask.open{display:block;}
+  #grip{width:42px;height:4px;border-radius:2px;background:#cfc4ba;margin:0 auto 10px;}
+  .warn{background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 10px;font-size:12px;color:#9a3412;line-height:1.7;margin-bottom:10px;}
+  .card{background:#fff;border:1px solid #eee2da;border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+  .card h2{font-size:14px;margin:0 0 8px;color:#b91c1c;border-left:4px solid #b91c1c;padding-left:8px;}
+  .card p,.card li{font-size:12.5px;color:#444;line-height:1.7;margin:4px 0;}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0;}
+  th,td{border:1px solid #e8d8ce;padding:5px 6px;text-align:center;}
+  th{background:#fdf0ec;color:#7f1d1d;}
+  .grp{font-size:13px;font-weight:700;margin:10px 0 6px;padding-left:8px;border-left:4px solid currentColor;}
+  .pt{display:block;width:100%;text-align:left;background:#fff;border:1px solid #eadfd6;border-radius:8px;padding:7px 9px;
+      margin:6px 0;font-size:12.5px;color:#333;font-family:inherit;box-sizing:border-box;}
+  .pt b{font-size:13px;}
+  .tag{display:inline-block;border-radius:9px;font-size:11px;padding:0 7px;margin-left:6px;color:#fff;vertical-align:1px;}
+  .pt small{display:block;color:#888;margin-top:2px;font-size:11.5px;}
+  .lg{display:flex;align-items:center;gap:6px;font-size:12px;color:#555;margin:3px 0;}
+  .dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto;}
+  .src a{color:#1d4ed8;text-decoration:none;word-break:break-all;}
+  #err{display:none;position:absolute;top:0;left:0;right:0;background:#7f1d1d;color:#fff;font-size:12px;padding:6px 10px;z-index:99;}
+  @media (min-width:900px){
+    #sheet{left:auto;width:390px;top:0;bottom:0;max-height:100%;border-radius:0;transform:translateX(103%);border-left:1px solid #e5ddd5;padding-top:16px;}
+    #sheet.open{transform:translateX(0);}
+    #mask{display:none!important;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>🏍️ 保定维多利亚摩友群专用地图</h1>
+    <span class="stat">测速卡口 <b>22</b> 处</span>
+    <span class="stat">限速60 <b>4</b> 处</span>
+    <span class="stat">限速70 <b>12</b> 处</span>
+    <span class="stat">限速80 <b>6</b> 处</span>
+    <span class="stat">数据截至 2026-10</span>
+  </header>
+  <div id="map">
+    <div id="err"></div>
+    <div id="tip"></div>
+    <button id="openBtn">📋 路段列表 / 处罚标准 / 新规</button>
+    <div id="mask"></div>
+    <div id="sheet">
+      <div id="grip"></div>
+      <div class="warn">⚠️ 红点为保定交警官方公告的<b>固定测速卡口</b>示意位置，具体限速以现场标志为准；交警还有移动测速、区间测速，未标注路段不代表不抓拍。拖动/双指缩放地图查看。</div>
+      <div class="card">
+        <h2>图例（颜色越深，限速越低）</h2>
+        <div class="lg"><span class="dot" style="background:#8f1010"></span>限速 60 km/h（2026年新调整，最易被拍）</div>
+        <div class="lg"><span class="dot" style="background:#d32f2f"></span>限速 70 km/h</div>
+        <div class="lg"><span class="dot" style="background:#e65100"></span>限速 大型车70 / 小型车80 km/h</div>
+        <div class="lg"><span class="dot" style="background:#f9a825"></span>限速 80 km/h</div>
+      </div>
+      <div class="card" style="padding-bottom:4px">
+        <h2>测速卡口点位（点击定位）</h2>
+        <div id="list"></div>
+      </div>
+      <div class="card">
+        <h2>超速处罚标准（摩托车 · 非高速/快速路）</h2>
+        <table>
+          <tr><th>超速幅度</th><th>罚款</th><th>记分</th></tr>
+          <tr><td>10% ~ 20%</td><td>100元</td><td>0分</td></tr>
+          <tr><td><b>20% ~ 50%</b></td><td>100元</td><td><b>记3分</b></td></tr>
+          <tr><td>50% 以上</td><td>200元</td><td>记6分</td></tr>
+        </table>
+        <p>例：限速60路段骑到72~90km/h 即属“超速20%~50%”，罚100元记3分（以处罚决定书为准）。</p>
+      </div>
+      <div class="card">
+        <h2>摩托车保定通行新规（2026-10-26 起施行）</h2>
+        <ul>
+          <li>须上牌、持证、戴头盔，按车道行驶；</li>
+          <li>设禁行标志的<b>高架桥、快速路禁止摩托车通行</b>；</li>
+          <li><b>夜间限行</b>：每日21时至次日6时，排量≥400cc禁行——东二环以西、西二环以东、北二环以南、南二环以北（不含上述道路），以及东风路东二环至聚贤街段、东湖片区部分道路；</li>
+          <li>严禁非法改装、“飙车炸街”、追逐竞驶。</li>
+        </ul>
+      </div>
+      <div class="card src">
+        <h2>数据来源（官方公告）</h2>
+        <ol>
+          <li>保定市交警支队公告（2022-05-12发布，05-20启用）：主城区21处监控测速点位及限速值。<br><a href="https://web.cmc.hebtv.com/cms/rmt0336/19/19js/zx/tt/10790808.shtml" target="_blank">河北广播电视台报道原文</a></li>
+          <li>保定市交管支队公告（2026-01-31发布）：重新启用4处测速点位，限速调整为60km/h。<br><a href="https://www.zhaopin0312.com/plugin.php?aid=407&id=tom_tcpc&mod=toutiaoinfo" target="_blank">公告转载（保定日报来源）</a></li>
+          <li>《关于加强摩托车城市通行管理的通告》（2026-10-26施行）。<br><a href="https://feng.ifeng.com/c/8xHHLRRLGYD" target="_blank">通告全文</a></li>
+        </ol>
+        <p>徐水区另有4处省道测速点（容易线、安大线，限速80km/h，2024-05-26启用），不在本图主城区范围。</p>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://map.qq.com/api/gljs?v=1.exp&key=FTNBZ-NSPLI-Z4WGS-UHP7J-NQ7CS-OOFHC"></script>
+<script>
+var PTS=[
+ {n:'七一西路卡口（西二环—西三环之间）',lat:38.8780,lng:115.3980,L:'60',c:'#8f1010',s:'2026-01-31公告',t:'即“七一路西二环至西三环段”。限速60km/h，72~90km/h即超速20%~50%，罚100元记3分。'},
+ {n:'复兴路西延卡口（西二环—西三环之间）',lat:38.8860,lng:115.3980,L:'60',c:'#8f1010',s:'2026-01-31公告',t:'限速60km/h。'},
+ {n:'北二环地道桥卡口',lat:38.8970,lng:115.4400,L:'60',c:'#8f1010',s:'2026-01-31公告',t:'限速60km/h（原70km/h，2026年起按60执行）。'},
+ {n:'东风路天润街卡口',lat:38.8620,lng:115.4180,L:'60',c:'#8f1010',s:'2026-01-31公告',t:'限速60km/h。'},
+ {n:'北三环地道桥卡口',lat:38.9250,lng:115.4430,L:'70',c:'#d32f2f',s:'2022-05-20公告',t:'限速70km/h。'},
+ {n:'西二环郎庄村卡口',lat:38.8330,lng:115.4210,L:'70',c:'#d32f2f',s:'2022-05-20公告',t:'限速70km/h。'},
+ {n:'西二环生态园门口卡口',lat:38.8180,lng:115.4220,L:'70',c:'#d32f2f',s:'2022-05-20公告',t:'限速70km/h。'},
+ {n:'乐凯北大街贤台卡口',lat:38.9430,lng:115.4490,L:'70',c:'#d32f2f',s:'2022-05-20公告',t:'限速70km/h。'},
+ {n:'107国道于庄卡口',lat:38.9120,lng:115.4280,L:'70',c:'#d32f2f',s:'2022-05-20公告',t:'限速70km/h。'},
+ {n:'朝阳北大街西南韩村卡口',lat:38.9460,lng:115.4680,L:'70',c:'#d32f2f',s:'2022-05-20公告',t:'限速70km/h。'},
+ {n:'朝阳北大街东庄村卡口',lat:38.9630,lng:115.4710,L:'70',c:'#d32f2f',s:'2022-05-20公告',t:'限速70km/h。'},
+ {n:'南二环新安铺卡口',lat:38.8160,lng:115.4870,L:'70',c:'#d32f2f',s:'2022-05-20公告',t:'限速70km/h；同点位另抓拍不按规定使用远光灯。'},
+ {n:'西二环南章村卡口',lat:38.9050,lng:115.4200,L:'70',c:'#d32f2f',s:'2022-05-20公告',t:'限速70km/h。'},
+ {n:'北二环国秀化工卡口',lat:38.8980,lng:115.4120,L:'70',c:'#d32f2f',s:'2022-05-20公告',t:'限速70km/h。'},
+ {n:'南二环西二环以西龙门架卡口',lat:38.8200,lng:115.3980,L:'70',c:'#d32f2f',s:'2022-05-20公告',t:'限速70km/h。'},
+ {n:'东二环贺阳学校卡口',lat:38.8330,lng:115.5050,L:'70',c:'#d32f2f',s:'2022-05-20公告',t:'限速70km/h。'},
+ {n:'东三环西百楼卡口',lat:38.9160,lng:115.5280,L:'70/80',c:'#e65100',s:'2022-05-20公告',t:'大型汽车70km/h，小型汽车80km/h。'},
+ {n:'东三环青堡村卡口',lat:38.8530,lng:115.5310,L:'70/80',c:'#e65100',s:'2022-05-20公告',t:'大型汽车70km/h，小型汽车80km/h。'},
+ {n:'西三环江城卡口',lat:38.8300,lng:115.3780,L:'70/80',c:'#e65100',s:'2022-05-20公告',t:'大型汽车70km/h，小型汽车80km/h。'},
+ {n:'西三环大激店卡口',lat:38.8620,lng:115.3760,L:'70/80',c:'#e65100',s:'2022-05-20公告',t:'大型汽车70km/h，小型汽车80km/h。'},
+ {n:'西三环郄庄卡口',lat:38.8880,lng:115.3820,L:'70/80',c:'#e65100',s:'2022-05-20公告',t:'大型汽车70km/h，小型汽车80km/h。'},
+ {n:'乐凯大街高架桥卡口',lat:38.8260,lng:115.4480,L:'80',c:'#f9a825',s:'2022-05-20公告',t:'限速80km/h。设禁行标志的高架桥/快速路摩托车禁止通行。'}
+];
+function showErr(m){var e=document.getElementById('err');e.style.display='block';e.textContent='⚠ '+m;}
+if(typeof TMap==='undefined'){showErr('地图组件加载失败，请检查网络后刷新');}
+else{
+ var map=new TMap.Map('map',{center:new TMap.LatLng(38.8895,115.4535),zoom:12,minZoom:8,maxZoom:18});
+ var styles={s60:new TMap.MarkerStyle({width:26,height:34,anchor:{x:13,y:34},color:'#8f1010'}),
+             s70:new TMap.MarkerStyle({width:24,height:32,anchor:{x:12,y:32},color:'#d32f2f'}),
+             s78:new TMap.MarkerStyle({width:24,height:32,anchor:{x:12,y:32},color:'#e65100'}),
+             s80:new TMap.MarkerStyle({width:24,height:32,anchor:{x:12,y:32},color:'#f9a825'})};
+ function sid(L){return L==='60'?'s60':(L==='70'?'s70':(L==='80'?'s80':'s78'));}
+ var geos=PTS.map(function(p,i){return{id:String(i),styleId:sid(p.L),position:new TMap.LatLng(p.lat,p.lng)};});
+ var mk=new TMap.MultiMarker({map:map,styles:styles,geometries:geos});
+ var tip=document.getElementById('tip');
+ function sel(i){
+   var p=PTS[i];
+   tip.style.display='block';
+   tip.innerHTML='<span class="x" onclick="this.parentNode.style.display=\'none\'">✕</span><b>'+p.n+'</b><br>'
+     +'<span style="color:#b91c1c;font-weight:700">⚠ 限速'+p.L.replace('70/80','大70/小80')+' km/h · 测速拍照</span><br>'
+     +'<span style="color:#555">'+p.t+'</span><br><span style="color:#999;font-size:11px">依据：保定交警 '+p.s+'</span>';
+   map.setCenter(new TMap.LatLng(p.lat,p.lng));map.setZoom(15);
+ }
+ mk.on('click',function(e){sel(Number(e.geometry.id));});
+ var GROUPS=[{k:'60',t:'🔴 限速60km/h —— 2026年新调整',c:'#8f1010'},{k:'70',t:'🟠 限速70km/h',c:'#d32f2f'},
+             {k:'70/80',t:'🟡 大车70 / 小车80 km/h（三环）',c:'#e65100'},{k:'80',t:'🟡 限速80km/h（高架）',c:'#f9a825'}];
+ var list=document.getElementById('list');
+ GROUPS.forEach(function(g){
+   var idx=[];PTS.forEach(function(p,i){if(p.L===g.k)idx.push(i);});
+   if(!idx.length)return;
+   var h=document.createElement('div');h.className='grp';h.style.color=g.c;h.textContent=g.t;list.appendChild(h);
+   idx.forEach(function(i){
+     var p=PTS[i];var b=document.createElement('button');b.className='pt';
+     b.innerHTML='<b>'+(i+1)+'. '+p.n+'</b><span class="tag" style="background:'+p.c+'">限速'+p.L.replace('70/80','大70/小80')+'</span><small>'+p.t+'（'+p.s+'）</small>';
+     b.onclick=function(){sel(i);closeS();};list.appendChild(b);
+   });
+ });
+ var sheet=document.getElementById('sheet'),mask=document.getElementById('mask');
+ document.getElementById('openBtn').onclick=function(){
+   var open=sheet.classList.contains('open');
+   if(open){sheet.classList.remove('open');mask.classList.remove('open');}
+   else{sheet.classList.add('open');if(window.innerWidth<900)mask.classList.add('open');}
+ };
+ mask.onclick=function(){sheet.classList.remove('open');mask.classList.remove('open');};
+ function closeS(){sheet.classList.remove('open');mask.classList.remove('open');}
+ if(window.innerWidth>=900){sheet.classList.add('open');}
+}
+</script>
+</body>
+</html>
